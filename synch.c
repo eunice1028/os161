@@ -115,9 +115,8 @@ lock_create(const char *name)
 	return NULL;
 	}
 	
-	// add stuff here as needed
 	lock->status = 0;
-	lock *lock_thread->NULL;
+	lock->lock_thread = NULL;
 	return lock;
 }
 
@@ -144,7 +143,6 @@ lock_acquire(struct lock *lock)
 	if(lock->status == 0){ //lock free, aquire	
 		lock->status = 1; //lock switches to locked state
 		lock->lock_thread = curthread; //pointer to thread saved in lock
-		printf("lock aquired\n"); //debug
 	}
 	splx(spl);
 }
@@ -159,7 +157,6 @@ lock_release(struct lock *lock)
 	if(lock->lock_thread == curthread){  //only release lock if same thread aquired it
 		lock->lock_thread = NULL;
 		lock->status = 0;
-		printf("lock released\n"); //debug
 	}
 	splx(spl);
 }
