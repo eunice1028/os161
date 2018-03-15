@@ -1,0 +1,34 @@
+---------------------------------------------------------------------------------------------------
+Answer 1: When a thread exits, it checks a number at the bottom of the stack to make sure the stack 
+was not overflowed (or other problems). Then it gets rid of its space in virtual memory, 
+decrements number of threads, and switches its state to S_ZOMB. When a thread goes to sleep it 
+checks to make sure its not in an interrupt handler. It then gives way to the next thread and 
+changes the state of the current thread to S_SLEEP.
+---------------------------------------------------------------------------------------------------
+Answer 2: mi_switch and md_switch
+---------------------------------------------------------------------------------------------------
+Answer 3: A thread in stat S_RUN means that the thread is running. S_READY means that the thread 
+is ready to be run. S_SLEEP means that the thread is not running and waiting to be woken up.
+S_ZOMB means the thread is a zombie. This means that it is finished running but not yet deleted.
+---------------------------------------------------------------------------------------------------
+Answer 4: Turning interrupts off means that interrupts signaled are ignored by the handler.
+Interrupts can be turned off using splhigh. It can be important to turn off interrupts incase a
+thread is in the middle something  that should not be interrupted (i.e. middle of context switch).
+---------------------------------------------------------------------------------------------------
+Answer 5: When a thread is woken up, it is removed from the list of sleeping threads and is added
+to the run list with make_runnable.
+---------------------------------------------------------------------------------------------------
+Answer 6: struct thread * scheduler(void) --> line 88. 
+---------------------------------------------------------------------------------------------------
+Answer 7: It picks the next thread using a roumd-robin run queue. This gives every thread an equal
+amount of time to run.
+---------------------------------------------------------------------------------------------------
+Answer 8: ?
+---------------------------------------------------------------------------------------------------
+Answer 9: thread_sleep is seen in the function P for semaphores (P = wait). It puts the current 
+thread to sleep while the semaphore count is 0. thread_wakeup is seen in the function V 
+(V = signal). It wakes up sleeping threads waiting for the semaphore. The semaphore passed into
+thread_sleep is for when thread_wakeup is called, it only wakes up threads associated with the 
+semaphore.
+---------------------------------------------------------------------------------------------------
+Answer 10: Locks can only be released by the same thread that aquired it.

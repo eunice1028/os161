@@ -1,0 +1,12 @@
+-------------------------------------------------------------------------------------------
+Answer 1: With the rule of whoever arrives first goes first, the entire intersection would 
+be controlled by a lock. The car would grab the lock, and when its through, release the 
+lock so the next car can proceed. This is suboptimal since only one car can go at a time
+through the intersection.
+-------------------------------------------------------------------------------------------
+Answer 2: A deadlock could arise if there were locks on each of the 4 sections of the
+intersection and all cars could go at the same time. One car may grab a lock that another 
+needs in order to cross, but that other car may also have a lock that the original car 
+needs in order to cross. In this situation both cars would be waiting for the other to
+release a lock before it can proceed, and be stuck.
+-------------------------------------------------------------------------------------------

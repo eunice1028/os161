@@ -23,6 +23,7 @@ sem_create(const char *namearg, int initial_count)
 
 	sem = kmalloc(sizeof(struct semaphore));
 	if (sem == NULL) {
+		DEBUG(DB_KMALLOC, "semaphore malloc failed\n");
 		return NULL;
 	}
 
@@ -111,49 +112,66 @@ lock_create(const char *name)
 	lock->name = kstrdup(name);
 	if (lock->name == NULL) {
 		kfree(lock);
-		return NULL;
+	return NULL;
 	}
 	
-	// add stuff here as needed
-	
+	lock->status = 0;
+	lock->lock_thread = NULL;
 	return lock;
 }
 
 void
 lock_destroy(struct lock *lock)
-{
+{	
+	int spl;
 	assert(lock != NULL);
-
-	// add stuff here as needed
-	
+	spl = splhigh();
+	if(lock->lock_thread != NULL) //lock not destroyed if held
+		return;
+	splx(spl);
 	kfree(lock->name);
 	kfree(lock);
 }
 
 void
 lock_acquire(struct lock *lock)
-{
-	// Write this
+{	
+	int spl;
+	assert(lock != NULL);
 
-	(void)lock;  // suppress warning until code gets written
+	spl =splhigh();
+	if(lock->status == 0){ //lock free, aquire	
+		lock->status = 1; //lock switches to locked state
+		lock->lock_thread = curthread; //pointer to thread saved in lock
+	}
+	splx(spl);
 }
 
 void
 lock_release(struct lock *lock)
 {
-	// Write this
+	int spl;
+	assert(lock != NULL);
 
-	(void)lock;  // suppress warning until code gets written
+	spl = splhigh();
+	if(lock->lock_thread == curthread){  //only release lock if same thread aquired it
+		lock->lock_thread = NULL;
+		lock->status = 0;
+	}
+	splx(spl);
 }
 
 int
 lock_do_i_hold(struct lock *lock)
 {
-	// Write this
-
-	(void)lock;  // suppress warning until code gets written
-
-	return 1;    // dummy until code gets written
+	int spl, status;
+	assert(lock != NULL);
+	spl = splhigh();
+	status = 0;
+	if(lock->lock_thread == curthread)
+		status = 1;
+	splx(spl);
+	return status;
 }
 
 ////////////////////////////////////////////////////////////

@@ -48,10 +48,13 @@ void              sem_destroy(struct semaphore *);
  * internally.
  */
 
+struct thread;
 struct lock {
 	char *name;
 	// add what you need here
 	// (don't forget to mark things volatile as needed)
+	volatile int status; //status = 0 is a free lock; status = 1 is an aquired lock
+	struct thread *lock_thread; //thread that holds the lock
 };
 
 struct lock *lock_create(const char *name);
