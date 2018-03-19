@@ -101,6 +101,7 @@ V(struct semaphore *sem)
 struct lock *
 lock_create(const char *name)
 {
+	kprintf("YOYOYOYOYO");
 	struct lock *lock;
 
 	lock = kmalloc(sizeof(struct lock));
@@ -113,9 +114,12 @@ lock_create(const char *name)
 		kfree(lock);
 		return NULL;
 	}
-	
+
 	// add stuff here as needed
-	
+
+	lock -> state = 0;
+	lock -> thread_acquired = NULL;
+
 	return lock;
 }
 
@@ -125,35 +129,68 @@ lock_destroy(struct lock *lock)
 	assert(lock != NULL);
 
 	// add stuff here as needed
-	
-	kfree(lock->name);
-	kfree(lock);
+	if (lock -> state == 0)
+	{
+	  kfree(lock->name);
+	  kfree(lock);
+	}
 }
 
 void
 lock_acquire(struct lock *lock)
 {
 	// Write this
+	int spl;
+	assert(lock != NULL);
+	spl = splhigh();
+	assert(curthread != NULL);
+	if (lock -> state == 0)
+	{
+	  lock -> thread_acquired = curthread; //set thread that has acquired lock
+	  lock -> state = 1;
+	}
 
-	(void)lock;  // suppress warning until code gets written
+	splx(spl);
+	//(void)lock;  // suppress warning until code gets written
 }
 
 void
 lock_release(struct lock *lock)
 {
 	// Write this
+        int spl;
+        spl = splhigh();
+        assert(curthread != NULL);
+        if (lock -> thread_acquired == curthread)
+        {
+	  lock -> thread_acquired = NULL;
+          lock -> state = 0; //free lock
+        }
 
-	(void)lock;  // suppress warning until code gets written
+        splx(spl);
+	//(void)lock;  // suppress warning until code gets written
 }
 
 int
 lock_do_i_hold(struct lock *lock)
 {
 	// Write this
+	int spl, s;
+        spl = splhigh();
+        assert(curthread != NULL);
+        if (lock -> thread_acquired == curthread)
+        {
+	  s = 1;
+        }
+	
+	s = 0;
+	splx(spl);
+	return s; //returns 0 if current thread does not hold lock
+		  //returns 1 if current thread holds lock
 
-	(void)lock;  // suppress warning until code gets written
 
-	return 1;    // dummy until code gets written
+	//(void)lock;  // suppress warning until code gets written
+
 }
 
 ////////////////////////////////////////////////////////////
