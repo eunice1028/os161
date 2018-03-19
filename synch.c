@@ -112,7 +112,7 @@ lock_create(const char *name)
 	lock->name = kstrdup(name);
 	if (lock->name == NULL) {
 		kfree(lock);
-	return NULL;
+		return NULL;
 	}
 	
 	lock->status = 0;
@@ -126,8 +126,6 @@ lock_destroy(struct lock *lock)
 	int spl;
 	assert(lock != NULL);
 	spl = splhigh();
-	if(lock->lock_thread != NULL) //lock not destroyed if held
-		return;
 	splx(spl);
 	kfree(lock->name);
 	kfree(lock);
@@ -139,11 +137,17 @@ lock_acquire(struct lock *lock)
 	int spl;
 	assert(lock != NULL);
 
-	spl =splhigh();
-	if(lock->status == 0){ //lock free, aquire	
-		lock->status = 1; //lock switches to locked state
-		lock->lock_thread = curthread; //pointer to thread saved in lock
-	}
+	spl = splhigh();
+
+	//check if already held
+	if(lock->status && lock->lock_thread == curthread)
+		return;
+
+	//spin until free
+	while(lock->status)
+		thread_sleep(lock);	
+	lock->status = 1; 
+	lock->lock_thread = curthread; 
 	splx(spl);
 }
 
@@ -154,9 +158,12 @@ lock_release(struct lock *lock)
 	assert(lock != NULL);
 
 	spl = splhigh();
-	if(lock->lock_thread == curthread){  //only release lock if same thread aquired it
+
+	//only release if same thread
+	if(lock->status && lock->lock_thread == curthread){
 		lock->lock_thread = NULL;
 		lock->status = 0;
+		thread_wakeup(lock);
 	}
 	splx(spl);
 }
@@ -164,14 +171,11 @@ lock_release(struct lock *lock)
 int
 lock_do_i_hold(struct lock *lock)
 {
-	int spl, status;
 	assert(lock != NULL);
-	spl = splhigh();
-	status = 0;
-	if(lock->lock_thread == curthread)
-		status = 1;
-	splx(spl);
-	return status;
+	int stat = 0;
+	if(lock->lock_thread == curthread && lock->status)
+		stat = 1;
+	return stat;
 }
 
 ////////////////////////////////////////////////////////////

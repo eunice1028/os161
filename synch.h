@@ -53,7 +53,7 @@ struct lock {
 	char *name;
 	// add what you need here
 	// (don't forget to mark things volatile as needed)
-	volatile int status; //status = 0 is a free lock; status = 1 is an aquired lock
+	volatile int status; //status = 0 is a free lock; status = 1 is an acquired lock
 	struct thread *lock_thread; //thread that holds the lock
 };
 

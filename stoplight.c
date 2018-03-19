@@ -18,7 +18,8 @@
 #include <lib.h>
 #include <test.h>
 #include <thread.h>
-
+#include <synch.h>
+#include <queue.h>
 
 /*
  *
@@ -41,12 +42,19 @@ enum turn{Straight, Left, Right};
 enum stage{Approach, Enter, Leave};
 
 /*
+ * locks and lock queue
+ * Eunice: look at queue.h in kern/include
+ */
+struct lock *NE, *SE, *NW, *SW;
+
+
+/*
  *
- * Func Definition
+ * Prototypes
  *
  */
-static void printcars(int carstage, int carnumber, int cardirection,int carturn);
 int getdestination(int direction, int turn);
+static void printcars(int carstage, int carnumber, int cardirection,int carturn);
 
 /*
  *
@@ -77,16 +85,96 @@ void
 gostraight(unsigned long cardirection,
            unsigned long carnumber)
 {
-        /*
-         * Avoid unused variable warnings.
-         */
-        
-        (void) cardirection;
-        (void) carnumber;
+	
+/*
+ * This applies to all directions:
+ * First, the cars try to acquire all locks it needs to cross the intersection.
+ * If the car is unable to, it unlocks those it did acquire and yields to the
+ * next car. It keeps doing this until it can acquire all its locks,
+ * then enters the intersection and leaves
+ *
+ */
+ 	
+	switch(cardirection)
+	{
+		case North:
+			lock_acquire(NW);  //tries to grab locks
+			lock_acquire(SW);
+			while(!lock_do_i_hold(NW) && !lock_do_i_hold(SW)) //not successful
+			{
+				//release any locks if it did aquire any
+				if(lock_do_i_hold(NW))
+					lock_release(NW);
+				if(lock_do_i_hold(SW))
+					lock_release(SW);
+				//yield to next thread in READY
+				thread_yield();
+				//tries to acquire locks and repeat
+				lock_acquire(NW);
+				lock_acquire(SW);
+			}
+			//car successfully entered
+			printcars(Enter, carnumber, cardirection, Straight);
+			//release locks
+			lock_release(NW);
+			lock_release(SW);
+			break;
 
-	printcars(Enter, carnumber, cardirection, Straight);
+		case East:
+			lock_acquire(NE);
+               		lock_acquire(NW);
+                	while(!lock_do_i_hold(NE) && !lock_do_i_hold(NW))
+                	{       
+                        	if(lock_do_i_hold(NE))
+                                	lock_release(NE);
+                        	if(lock_do_i_hold(NW))
+                                	lock_release(NW);
+                        	thread_yield();
+                        	lock_acquire(NE);
+                        	lock_acquire(NW);
+                	}
+                	printcars(Enter, carnumber, cardirection, Straight);
+			lock_release(NE);
+			lock_release(NW);
+			break;
 
-	/**CAR TURN CODE HERE**/
+		case South:
+                        lock_acquire(SE);
+                        lock_acquire(NE);
+                        while(!lock_do_i_hold(SE) && !lock_do_i_hold(NE))
+                        {
+                                if(lock_do_i_hold(SE))
+                                        lock_release(SE);
+                                if(lock_do_i_hold(NE))
+                                        lock_release(NE);
+                                thread_yield();
+                                lock_acquire(SE);
+                                lock_acquire(NE);
+                        }
+                        printcars(Enter, carnumber, cardirection, Straight);
+                        lock_release(SE);
+                        lock_release(NE);
+                        break;
+		
+		case West:
+                        lock_acquire(SW);
+                        lock_acquire(SE);
+                        while(!lock_do_i_hold(SW) && !lock_do_i_hold(SE))
+                        {
+                                if(lock_do_i_hold(SW))
+                                        lock_release(SW);
+                                if(lock_do_i_hold(SE))
+                                        lock_release(SE);
+                                thread_yield();
+                                lock_acquire(SW);
+                                lock_acquire(SE);
+                        }
+                        printcars(Enter, carnumber, cardirection, Straight);
+                        lock_release(SW);
+                        lock_release(SE);
+                        break;
+
+	}
 
 	printcars(Leave, carnumber, cardirection, Straight);
 }
@@ -113,17 +201,106 @@ static
 void
 turnleft(unsigned long cardirection,
          unsigned long carnumber)
-{
-        /*
-         * Avoid unused variable warnings.
-         */
+{	
+	switch(cardirection)
+        {
+                case North:
+                        lock_acquire(NW);
+                        lock_acquire(SW);
+			lock_acquire(SE);
+                        while(!lock_do_i_hold(NW) && !lock_do_i_hold(SW) 
+				&& !lock_do_i_hold(SE))
+                        {
+                                if(lock_do_i_hold(NW))
+                                        lock_release(NW);
+                                if(lock_do_i_hold(SW))
+                                        lock_release(SW);
+				if(lock_do_i_hold(SE))
+                                        lock_release(SE);
+                                thread_yield();
+                                lock_acquire(NW);
+                                lock_acquire(SW);
+				lock_acquire(SE);
+                        }
+                        printcars(Enter, carnumber, cardirection, Left);
+                        lock_release(NW);
+                        lock_release(SW);
+			lock_release(SE);
+                        break;
 
-        (void) cardirection;
-        (void) carnumber;
-	
-	printcars(Enter, carnumber, cardirection, Left);
+                case East:
+                        lock_acquire(NE);
+                        lock_acquire(NW);
+			lock_acquire(SW);
+                        while(!lock_do_i_hold(NE) && !lock_do_i_hold(NW)
+				&& !lock_do_i_hold(SW))
+                        {
+                                if(lock_do_i_hold(NE))
+                                        lock_release(NE);
+                                if(lock_do_i_hold(NW))
+                                        lock_release(NW);
+				if(lock_do_i_hold(SW))
+                                        lock_release(SW);
+                                thread_yield();
+                                lock_acquire(NE);
+                                lock_acquire(NW);
+				lock_acquire(SW);
+                        }
+                        printcars(Enter, carnumber, cardirection, Left);
+                        lock_release(NE);
+                        lock_release(NW);
+			lock_acquire(SW);
+                        break;
 
-        /**CAR TURN CODE HERE**/
+                case South:
+                        lock_acquire(SE);
+                        lock_acquire(NE);
+			lock_acquire(NW);
+                        while(!lock_do_i_hold(SE) && !lock_do_i_hold(NE)
+				&& !lock_do_i_hold(NW))
+                        {
+                                if(lock_do_i_hold(SE))
+                                        lock_release(SE);
+                                if(lock_do_i_hold(NE))
+                                        lock_release(NE);
+				if(lock_do_i_hold(NW))
+                                        lock_release(NW);
+                                thread_yield();
+                                lock_acquire(SE);
+                                lock_acquire(NE);
+				lock_acquire(NW);
+                        }
+                        printcars(Enter, carnumber, cardirection, Left);
+                        lock_release(SE);
+                        lock_release(NE);
+			lock_release(NW);
+                        break;
+
+                case West:
+                        lock_acquire(SW);
+                        lock_acquire(SE);
+			lock_acquire(NE);
+                        while(!lock_do_i_hold(SW) && !lock_do_i_hold(SE)
+				&& !lock_do_i_hold(NE))
+                        {
+                                if(lock_do_i_hold(SW))
+                                        lock_release(SW);
+                                if(lock_do_i_hold(SE))
+                                        lock_release(SE);
+                                if(lock_do_i_hold(NE))
+                                        lock_release(NE);
+				thread_yield();
+                                lock_acquire(SW);
+                                lock_acquire(SE);
+				lock_acquire(NE);
+                        }
+                        printcars(Enter, carnumber, cardirection, Left);
+                        lock_release(SW);
+                        lock_release(SE);
+                        lock_release(NE);
+			break;
+
+        }
 
         printcars(Leave, carnumber, cardirection, Left);
 
@@ -152,16 +329,52 @@ void
 turnright(unsigned long cardirection,
           unsigned long carnumber)
 {
-        /*
-         * Avoid unused variable warnings.
-         */
+	switch(cardirection)
+	{
+		case North:
+			lock_acquire(NW);
+                        while(!lock_do_i_hold(NW))
+                        {
+                                thread_yield();
+				lock_acquire(NW);
+                        }
+                        printcars(Enter, carnumber, cardirection, Right);
+                        lock_release(NW);
+                        break;
 
-        (void) cardirection;
-        (void) carnumber;
+		case East:
+			lock_acquire(NE);
+                        while(!lock_do_i_hold(NE))
+                        {       
+                                thread_yield();
+                                lock_acquire(NE);
+                        }
+                        printcars(Enter, carnumber, cardirection, Right);
+                        lock_release(NE);
+                        break;
 
-	printcars(Enter, carnumber, cardirection, Right);
-
-        /**CAR TURN CODE HERE**/
+                case South:
+                   	lock_acquire(SE);
+                        while(!lock_do_i_hold(SE))
+                        {
+                                thread_yield();
+                                lock_acquire(SE);
+                        }
+                        printcars(Enter, carnumber, cardirection, Right);
+                        lock_release(SE);
+                        break;
+                        
+		case West:
+			lock_acquire(SW);
+                        while(!lock_do_i_hold(SW))
+                        {
+                                thread_yield();
+                                lock_acquire(SW);
+                        }
+                        printcars(Enter, carnumber, cardirection, Right);
+                        lock_release(SW);
+                        break;
+        }
 
         printcars(Leave, carnumber, cardirection, Right);
 
@@ -207,7 +420,7 @@ approachintersection(void * unusedpointer,
 	//(void) turnright;
 
         /*
-         * cardirection  and turn is set randomly.
+         * cardirection and turn is set randomly.
          */
 
         cardirection = random() % 4;
@@ -224,6 +437,7 @@ approachintersection(void * unusedpointer,
 
 /*
  * getdestination()
+ *
  * Arguments:
  * 	int direction: starting direction
  * 	int turn: turning direction
@@ -279,11 +493,13 @@ int getdestination(int direction, int turn)
 
 /*
  * printcars()
+ *
  * Arguments:
  * 	int stage: what stage the car is in (Approach, Enter, Leave)
  * 	int carnumber: car id
  * 	int cardirection: starting car direction
  * 	int carturn: car's turn
+ *
  * Returns:
  * 	nothing
  *
@@ -324,14 +540,13 @@ static void printcars(int carstage, int carnumber, int cardirection, int carturn
 	//get destination string
 	int destvalue = getdestination(cardirection, carturn);
 	if(destvalue == North)
-                strcpy(direction, "NORTH");
+                strcpy(destination, "NORTH");
         else if(destvalue == East)
-                strcpy(direction, "EAST");
+                strcpy(destination, "EAST");
         else if(destvalue == South)
-                strcpy(direction, "SOUTH");
+                strcpy(destination, "SOUTH");
         else if(destvalue == West)
-                strcpy(direction, "WEST");
-
+                strcpy(destination, "WEST");
 	//print strings
 	kprintf("car %d is %s from the %s, going towards the %s\n", 
 		carnumber, stage, direction, destination);
@@ -350,7 +565,7 @@ static void printcars(int carstage, int carnumber, int cardirection, int carturn
  *
  * Notes:
  *      Driver code to start up the approachintersection() threads.  You are
- *      free to modiy this code as necessary for your solution.
+ *      free to modify this code as necessary for your solution.
  */
 
 int
@@ -369,6 +584,17 @@ createcars(int nargs,
         /*
          * Start NCARS approachintersection() threads.
          */
+
+
+	/*
+ 	*intialize locks
+	*/
+
+	NE = lock_create("NE");
+	SE = lock_create("SE");
+	NW = lock_create("NW");
+	SW = lock_create("SW");
+	
 
         for (index = 0; index < NCARS; index++) {
 
