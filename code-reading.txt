@@ -1,0 +1,13 @@
+Code-Reading:
+
+1. When thread_exit is called, the part of the thread that is not needed at the moment will be cleaned up, and the rest will wait until thread_destroy gets called. When thread_sleep is called, the thread voluntarily gives up the CPU, therefore allowing the scheduler to choose and run another thread. The calling thread will be blocked and will only be allowed to run again after thread_wakeup is called.
+2. The function mi_switch handles context switches. It calls md_switch, which is a machine-dependent code, to perform the actual context switch.
+3. The different states that a thread can be are: Run, Ready, Sleep, and Zombie. If a thread is in a Running state, that means the thread is currently being executed. A thread in the Ready state means that the thread is in the Ready queue lining up and waiting for its turn to execute. A thread in the Sleep state means that the thread was executing in the past but a context switch was performed and the thread has been blocked. A thread in the Zombie state means that the thread has exited but not yet been deleted. 
+4. Turning off interrupt means none of the other threads can perform any action that interrupts with what the current thread is performing. Disabling interrupts is often used when atomic variables are involved in the execution in order to ensure that every thread is synchronized.
+5. Waking up a thread means putting a blocked thread back in the running queue. Thread_wakeup has to be called before running a sleeping thread. 
+6. The function scheduler() returns the next thread to run. 
+7. It first checks if runqueue is empty, if it is then the function will keep calling cpu_idle() until there is at least one thread in runqueue. It will then return the next runnable thread.
+8. The function clocksleep is called on a timer interrupt. It then calls thread_sleep, which is a function used to put a thread to sleep when a context switch needs to be performed.
+9. thread_sleep is called in a while loop when count in the semaphore is 0, thread_wakeup is called when count is greater than 0. These functions are used to perform actions on a thread once the condition is satisfied. The parameter of thread_sleep is the address of the semaphore. This will put the current thread to sleep.
+10. The lock API doesn't provide a lock_get_holder function because a thread doesn't need to know who is holding the lock, it only needs to know that if the lock is acquired or not. 
+
